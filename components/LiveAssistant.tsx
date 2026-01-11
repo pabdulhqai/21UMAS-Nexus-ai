@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, ShieldCheck, Activity } from 'lucide-react';
+import { Mic, MicOff, Volume2, ShieldCheck, Activity, WifiOff } from 'lucide-react';
 import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
 
 const LiveAssistant: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sessionRef = useRef<any>(null);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
-  // Manually implemented base64 encoding as required by guidelines
   const encode = (bytes: Uint8Array) => {
     let binary = '';
     const len = bytes.byteLength;
@@ -19,7 +19,6 @@ const LiveAssistant: React.FC = () => {
     return btoa(binary);
   };
 
-  // Manually implemented base64 decoding as required by guidelines
   const decode = (base64: string) => {
     const binaryString = atob(base64);
     const len = binaryString.length;
@@ -30,7 +29,6 @@ const LiveAssistant: React.FC = () => {
     return bytes;
   };
 
-  // Decodes raw PCM audio bytes to an AudioBuffer for playback
   const decodeAudioData = async (data: Uint8Array, ctx: AudioContext) => {
     const dataInt16 = new Int16Array(data.buffer);
     const buffer = ctx.createBuffer(1, dataInt16.length, 24000);
@@ -41,27 +39,24 @@ const LiveAssistant: React.FC = () => {
     return buffer;
   };
 
+  const stopSession = () => {
+     if (sessionRef.current) {
+        try { sessionRef.current.close(); } catch(e) {}
+     }
+     sourcesRef.current.forEach(s => { try { s.stop(); } catch(e) {} });
+     sourcesRef.current.clear();
+     setIsActive(false);
+     setIsConnecting(false);
+  };
+
   const toggleSession = async () => {
+    setError(null);
     if (isActive) {
-      if (sessionRef.current) {
-          // Attempt to close safely
-          try {
-             sessionRef.current.close(); 
-          } catch(e) {
-             console.log("Session close cleanup", e);
-          }
-      }
-      setIsActive(false);
-      // Stop all sources
-      sourcesRef.current.forEach(source => {
-        try { source.stop(); } catch(e) {}
-      });
-      sourcesRef.current.clear();
+      stopSession();
       return;
     }
 
     setIsConnecting(true);
-    // Create a new GoogleGenAI instance right before making an API call
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     try {
@@ -77,7 +72,7 @@ const LiveAssistant: React.FC = () => {
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
-          systemInstruction: "أنت مساعد صوتي مباشر لجامعة 21 سبتمبر للعلوم الطبية. تحدث بوضوح ومهنية طبية، وكن ودوداً مع الطلاب."
+          systemInstruction: "أنت مساعد صوتي مباشر لجامعة 21 سبتمبر للعلوم الطبية. تحدث بوضوح شديد، بصوت طبيعي وودود. قدم إجابات مختصرة ومفيدة للطلاب."
         },
         callbacks: {
           onopen: () => {
@@ -87,8 +82,8 @@ const LiveAssistant: React.FC = () => {
             const processor = inputCtx.createScriptProcessor(4096, 1, 1);
             
             processor.onaudioprocess = (e) => {
+              if (!sessionRef.current) return;
               const inputData = e.inputBuffer.getChannelData(0);
-              // Convert Float32 to Int16 for PCM
               const l = inputData.length;
               const int16 = new Int16Array(l);
               for (let i = 0; i < l; i++) {
@@ -98,8 +93,6 @@ const LiveAssistant: React.FC = () => {
                   data: encode(new Uint8Array(int16.buffer)),
                   mimeType: 'audio/pcm;rate=16000'
               };
-
-              // Ensure data is streamed only after the session promise resolves
               sessionPromise.then(s => s.sendRealtimeInput({ media: pcmBlob }));
             };
             
@@ -107,49 +100,39 @@ const LiveAssistant: React.FC = () => {
             processor.connect(inputCtx.destination);
           },
           onmessage: async (msg: LiveServerMessage) => {
-            // Process the model's output audio bytes
             const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (audioData) {
               const buffer = await decodeAudioData(decode(audioData), outputCtx);
               const source = outputCtx.createBufferSource();
               source.buffer = buffer;
               source.connect(outputCtx.destination);
+              source.addEventListener('ended', () => sourcesRef.current.delete(source));
               
-              source.addEventListener('ended', () => {
-                sourcesRef.current.delete(source);
-              });
-
-              // Schedule gapless playback
-              nextStartTime = Math.max(nextStartTime, outputCtx.currentTime);
+              const now = outputCtx.currentTime;
+              nextStartTime = Math.max(nextStartTime, now);
               source.start(nextStartTime);
               nextStartTime += buffer.duration;
               sourcesRef.current.add(source);
             }
-
-            // Handle session interruption
+            
             if (msg.serverContent?.interrupted) {
-              for (const source of sourcesRef.current.values()) {
-                try {
-                  source.stop();
-                } catch (e) {
-                  // Ignore errors if already stopped
-                }
-              }
+              sourcesRef.current.forEach(s => { try{s.stop()}catch(e){} });
               sourcesRef.current.clear();
               nextStartTime = 0;
             }
           },
-          onclose: () => setIsActive(false),
+          onclose: () => stopSession(),
           onerror: (e) => {
-            console.error('Live session error:', e);
-            setIsConnecting(false);
-            setIsActive(false);
+            console.error('Live Error:', e);
+            setError("حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.");
+            stopSession();
           }
         }
       });
       sessionRef.current = await sessionPromise;
     } catch (err) {
-      console.error('Failed to connect to live session:', err);
+      console.error('Connection failed:', err);
+      setError("تعذر الوصول للميكروفون أو الخادم.");
       setIsConnecting(false);
     }
   };
@@ -167,7 +150,9 @@ const LiveAssistant: React.FC = () => {
       </div>
 
       <h2 className="text-2xl font-bold text-slate-800 mb-2">المساعد الصوتي المباشر</h2>
-      <p className="text-slate-500 text-center max-w-sm mb-8">تحدث مباشرة مع الذكاء الاصطناعي للحصول على استشارات أكاديمية وطبية فورية.</p>
+      <p className="text-slate-500 text-center max-w-sm mb-8">
+        {error ? <span className="text-red-500 flex items-center justify-center gap-2"><WifiOff size={16}/> {error}</span> : "تحدث مباشرة مع الذكاء الاصطناعي للحصول على استشارات أكاديمية وطبية فورية."}
+      </p>
 
       <button
         onClick={toggleSession}

@@ -1,5 +1,4 @@
-
-import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { SYSTEM_INSTRUCTION } from "../constants";
 
 export class GeminiService {
@@ -11,28 +10,31 @@ export class GeminiService {
 
   async fetchLatestNews() {
     try {
-      // استخدام Gemini 3 Pro لجلب الأخبار الحية وتنسيقها كـ JSON
       const response = await this.ai.models.generateContent({
         model: 'gemini-3-pro-preview',
-        contents: "استخرج آخر 4 أخبار أو إعلانات رسمية من موقع جامعة 21 سبتمبر (https://21umas.edu.ye/). ركز على الأخبار الحديثة جداً لعام 2024/2025. قم بصياغة النتيجة بتنسيق نصي يتضمن العنوان، التاريخ المختصر، ورابط المصدر إن وجد.",
+        contents: "استخرج آخر 4 أخبار أو إعلانات رسمية هامة من موقع جامعة 21 سبتمبر (https://21umas.edu.ye/). ركز على الأخبار الحديثة جداً (2024/2025). نسق الرد كنقاط موجزة.",
         config: {
           tools: [{ googleSearch: {} }],
-          systemInstruction: "أنت محرك جلب بيانات أكاديمي. وظيفتك العثور على أحدث الأخبار من الموقع الرسمي حصراً وتنسيقها بشكل جذاب وقصير."
+          systemInstruction: "أنت مراسل صحفي لجامعة 21 سبتمبر. مهمتك جلب الأخبار بدقة من الموقع الرسمي فقط."
         },
       });
 
       return {
-        text: response.text || "لا توجد أخبار جديدة حالياً.",
+        text: response.text || "عذراً، لم أتمكن من الوصول لآخر الأخبار حالياً.",
         sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
       };
     } catch (error) {
       console.error("News Fetch Error:", error);
-      return { text: "فشل تحديث الأخبار تلقائياً.", sources: [] };
+      return { text: "تعذر الاتصال بخادم الأخبار. يرجى المحاولة لاحقاً.", sources: [] };
     }
   }
 
-  async chatPro(prompt: string, history: any[] = []) {
+  async chatPro(prompt: string, history: any[] = [], isAdvisor: boolean = false) {
     try {
+      const contextInstruction = isAdvisor 
+        ? SYSTEM_INSTRUCTION + "\n\n ركز بشكل خاص على: شروط القبول، المعدلات، التكاليف الدراسية، والخطط الدراسية. تصرف كمرشد أكاديمي خبير."
+        : SYSTEM_INSTRUCTION;
+
       const response: GenerateContentResponse = await this.ai.models.generateContent({
         model: 'gemini-3-pro-preview',
         contents: [
@@ -40,21 +42,22 @@ export class GeminiService {
           { role: 'user', parts: [{ text: prompt }] }
         ],
         config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
+          systemInstruction: contextInstruction,
           tools: [{ googleSearch: {} }],
-          thinkingConfig: { thinkingBudget: 32768 }
+          thinkingConfig: { thinkingBudget: 32768 } // Enable deep reasoning
         },
       });
 
       return {
-        text: response.text || "لم يتم استلام رد.",
+        text: response.text || "عذراً، لم أستطع تكوين إجابة. يرجى إعادة الصياغة.",
         sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
           title: chunk.web?.title || "مصدر أكاديمي",
           uri: chunk.web?.uri || ""
         })) || []
       };
     } catch (error) {
-      return { text: "حدث خطأ في النظام الذكي.", sources: [] };
+      console.error("Chat Error:", error);
+      return { text: "حدث خطأ غير متوقع في النظام. يرجى التحقق من الاتصال.", sources: [] };
     }
   }
 
@@ -65,13 +68,14 @@ export class GeminiService {
         contents: {
           parts: [
             { inlineData: { data: imageBuffer, mimeType: 'image/jpeg' } },
-            { text: `كخبير أكاديمي وطبي في جامعة 21 سبتمبر، حلل هذه الوثيقة/الصورة: ${prompt}` }
+            { text: `بصفتك خبيراً أكاديمياً وطبياً في جامعة 21 سبتمبر: ${prompt}` }
           ]
         },
       });
-      return response.text || "فشل التحليل.";
+      return response.text || "فشل تحليل الصورة.";
     } catch (error) {
-      return "حدث خطأ أثناء تحليل الصورة.";
+      console.error("Vision Error:", error);
+      return "حدث خطأ أثناء معالجة الصورة. تأكد من أن الصورة واضحة.";
     }
   }
 }

@@ -1,4 +1,3 @@
-
 export enum ToolType {
   CHAT = 'CHAT',
   VISION = 'VISION',
@@ -6,11 +5,16 @@ export enum ToolType {
   ADVISOR = 'ADVISOR'
 }
 
+export interface GroundingSource {
+  title: string;
+  uri: string;
+}
+
 export interface Message {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
-  groundingSources?: Array<{ title: string; uri: string }>;
+  groundingSources?: GroundingSource[];
 }
 
 export interface UniversityInfo {

@@ -4,8 +4,7 @@ import ChatAssistant from './components/ChatAssistant';
 import VisionTool from './components/VisionTool';
 import LiveAssistant from './components/LiveAssistant';
 import NewsHub from './components/NewsHub';
-import { UNIVERSITY_CONFIG } from './constants';
-import { Search, GraduationCap, Building, Users, ArrowUpRight, BookOpen, Stethoscope, Sparkles, Zap } from 'lucide-react';
+import { Search, GraduationCap, Users, BookOpen, Stethoscope, Sparkles, Zap } from 'lucide-react';
 
 const DashboardHome: React.FC = () => {
   return (
@@ -103,10 +102,10 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'chat': return <ChatAssistant />;
+      case 'chat': return <ChatAssistant mode="general" />;
       case 'live': return <LiveAssistant />;
       case 'vision': return <VisionTool />;
-      case 'advisor': return <ChatAssistant />; // Re-using chat for advisor as it shares the same knowledge base
+      case 'advisor': return <ChatAssistant mode="advisor" />;
       default: return <DashboardHome />;
     }
   };
