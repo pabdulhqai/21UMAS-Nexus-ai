@@ -11,7 +11,7 @@ export class GeminiService {
   async fetchLatestNews() {
     try {
       const response = await this.ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-2.5-flash',
         contents: "استخرج آخر 4 أخبار أو إعلانات رسمية هامة من موقع جامعة 21 سبتمبر (https://21umas.edu.ye/). ركز على الأخبار الحديثة جداً (2024/2025). نسق الرد كنقاط موجزة.",
         config: {
           tools: [{ googleSearch: {} }],
@@ -36,7 +36,7 @@ export class GeminiService {
         : SYSTEM_INSTRUCTION;
 
       const response: GenerateContentResponse = await this.ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-2.5-flash',
         contents: [
           ...history,
           { role: 'user', parts: [{ text: prompt }] }
