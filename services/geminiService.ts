@@ -2,15 +2,19 @@ import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { SYSTEM_INSTRUCTION } from "../constants";
 
 export class GeminiService {
-  private ai: GoogleGenAI;
+  private ai: GoogleGenAI | null = null;
 
-  constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Lazy initialization to prevent white screen crashes if env is not ready immediately
+  private getClient(): GoogleGenAI {
+    if (!this.ai) {
+      this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    }
+    return this.ai;
   }
 
   async fetchLatestNews() {
     try {
-      const response = await this.ai.models.generateContent({
+      const response = await this.getClient().models.generateContent({
         model: 'gemini-2.5-flash',
         contents: "استخرج آخر 4 أخبار أو إعلانات رسمية هامة من موقع جامعة 21 سبتمبر (https://21umas.edu.ye/). ركز على الأخبار الحديثة جداً (2024/2025). نسق الرد كنقاط موجزة.",
         config: {
@@ -35,7 +39,8 @@ export class GeminiService {
         ? SYSTEM_INSTRUCTION + "\n\n ركز بشكل خاص على: شروط القبول، المعدلات، التكاليف الدراسية، والخطط الدراسية. تصرف كمرشد أكاديمي خبير."
         : SYSTEM_INSTRUCTION;
 
-      const response: GenerateContentResponse = await this.ai.models.generateContent({
+      // Removed thinkingConfig as it is not supported by gemini-2.5-flash
+      const response: GenerateContentResponse = await this.getClient().models.generateContent({
         model: 'gemini-2.5-flash',
         contents: [
           ...history,
@@ -43,8 +48,7 @@ export class GeminiService {
         ],
         config: {
           systemInstruction: contextInstruction,
-          tools: [{ googleSearch: {} }],
-          thinkingConfig: { thinkingBudget: 32768 } // Enable deep reasoning
+          tools: [{ googleSearch: {} }]
         },
       });
 
@@ -63,8 +67,8 @@ export class GeminiService {
 
   async analyzeVision(imageBuffer: string, prompt: string) {
     try {
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+      const response = await this.getClient().models.generateContent({
+        model: 'gemini-2.5-flash',
         contents: {
           parts: [
             { inlineData: { data: imageBuffer, mimeType: 'image/jpeg' } },

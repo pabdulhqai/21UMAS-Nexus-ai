@@ -25,12 +25,12 @@ const DashboardHome: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
-           <button className="flex flex-col items-center justify-center p-6 glass rounded-3xl hover:bg-emerald-600 hover:text-white transition-all group border-none shadow-xl">
-              <Zap className="mb-2 text-emerald-500 group-hover:text-white" />
+           <button className="flex flex-col items-center justify-center p-6 glass rounded-3xl hover:bg-emerald-600 hover:text-white transition-all duration-300 hover:scale-105 hover:shadow-xl group border-none shadow-xl cursor-pointer">
+              <Zap className="mb-2 text-emerald-500 group-hover:text-white transition-colors" />
               <span className="text-xs font-black">القبول الفوري</span>
            </button>
-           <button className="flex flex-col items-center justify-center p-6 glass rounded-3xl hover:bg-blue-600 hover:text-white transition-all group border-none shadow-xl">
-              <BookOpen className="mb-2 text-blue-500 group-hover:text-white" />
+           <button className="flex flex-col items-center justify-center p-6 glass rounded-3xl hover:bg-blue-600 hover:text-white transition-all duration-300 hover:scale-105 hover:shadow-xl group border-none shadow-xl cursor-pointer">
+              <BookOpen className="mb-2 text-blue-500 group-hover:text-white transition-colors" />
               <span className="text-xs font-black">المكتبة الرقمية</span>
            </button>
         </div>
@@ -44,8 +44,8 @@ const DashboardHome: React.FC = () => {
           { label: 'الأبحاث المدعومة', value: 'تغطية عالمية', icon: Search, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'سرعة الاستجابة', value: '< 0.5s', icon: Stethoscope, color: 'text-purple-600', bg: 'bg-purple-50' },
         ].map((stat, i) => (
-          <div key={i} className="glass p-8 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all border-none group cursor-default">
-            <div className={`${stat.bg} ${stat.color} w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+          <div key={i} className="glass p-8 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 border-none group cursor-default">
+            <div className={`${stat.bg} ${stat.color} w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
               <stat.icon size={28} />
             </div>
             <p className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">{stat.label}</p>
@@ -71,7 +71,7 @@ const DashboardHome: React.FC = () => {
                   انطلق الآن مع المساعد الصوتي المتقدم، المبرمج لخدمة طلاب جامعة 21 سبتمبر حصرياً.
                 </p>
              </div>
-             <button className="relative z-10 w-full py-5 bg-white text-emerald-900 rounded-[1.5rem] font-black hover:bg-emerald-50 transition-all shadow-2xl active:scale-95">
+             <button className="relative z-10 w-full py-5 bg-white text-emerald-900 rounded-[1.5rem] font-black hover:bg-emerald-50 transition-all duration-300 hover:scale-105 hover:shadow-2xl shadow-xl active:scale-95">
                 ابدأ رحلتك الآن
              </button>
              <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-emerald-400/20 rounded-full blur-[100px] group-hover:scale-125 transition-transform duration-1000"></div>
